@@ -1,0 +1,51 @@
+name: Build and Release Game Executables
+
+on:
+  push:
+    tags:
+      - 'v*'           
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyinstaller keyboard termcolor
+
+      - name: Build with PyInstaller
+        run: pyinstaller --onefile --console --name "ChillingAdventures" main.py
+
+      - name: Prepare Windows executable
+        if: runner.os == 'Windows'
+        run: |
+          mv dist/ChillingAdventures.exe dist/ChillingAdventures-Windows.exe
+          echo "FILE_PATH=dist/ChillingAdventures-Windows.exe" >> $env:GITHUB_ENV
+
+      - name: Prepare macOS executable
+        if: runner.os == 'macOS'
+        run: |
+          mv dist/ChillingAdventures dist/ChillingAdventures-macOS
+          echo "FILE_PATH=dist/ChillingAdventures-macOS" >> $GITHUB_ENV
+
+      - name: Prepare Linux executable
+        if: runner.os == 'Linux'
+        run: |
+          mv dist/ChillingAdventures dist/ChillingAdventures-Linux
+          echo "FILE_PATH=dist/ChillingAdventures-Linux" >> $GITHUB_ENV
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.FILE_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
